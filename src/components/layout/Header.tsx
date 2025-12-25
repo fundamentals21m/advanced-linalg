@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { COURSE_NAME, COURSE_ICON, FEATURES } from '@/config';
+import { COURSE_NAME, COURSE_ICON, FEATURES, HUB_URL } from '@/config';
 import { useGamification } from '@/contexts/GamificationContext';
 import { XPDisplay, StreakBadge } from '@/components/gamification';
 
@@ -59,6 +57,12 @@ export function Header({ onToggleSidebar, sidebarOpen }: HeaderProps) {
 
         {/* Center: Navigation */}
         <nav className="hidden md:flex items-center gap-6">
+          <a
+            href={HUB_URL}
+            className="text-dark-400 hover:text-dark-100 transition-colors text-sm font-medium"
+          >
+            Hub
+          </a>
           <Link
             to="/"
             className="text-dark-400 hover:text-dark-100 transition-colors text-sm font-medium"

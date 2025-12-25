@@ -38,9 +38,15 @@ export const COURSE_ICON = '🔷';
 export const BASE_PATH = '/advanced-linalg/';
 
 /**
+ * Hub URL - main Magic Internet Math landing page
+ */
+export const HUB_URL = 'https://mathacademy-cyan.vercel.app';
+
+/**
  * External links
  */
 export const LINKS = {
+  hub: HUB_URL,
   home: '/',
   leaderboard: `${BASE_PATH}#/leaderboard`,
   theorems: `${BASE_PATH}#/theorems`,
