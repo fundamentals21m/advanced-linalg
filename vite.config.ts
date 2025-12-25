@@ -6,7 +6,8 @@ import path from 'path'
 // COURSE CONFIGURATION - Advanced Linear Algebra (Hoffman & Kunze)
 // =============================================================================
 const COURSE_ID = 'advlinalg'
-const BASE_PATH = '/advanced-linalg/'
+// Use '/' for standalone Vercel deployment, '/advanced-linalg/' for subdirectory
+const BASE_PATH = '/'
 // =============================================================================
 
 export default defineConfig({
