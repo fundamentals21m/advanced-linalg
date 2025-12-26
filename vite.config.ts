@@ -5,13 +5,13 @@ import path from 'path'
 // =============================================================================
 // COURSE CONFIGURATION - Advanced Linear Algebra
 // =============================================================================
-const COURSE_ID = 'advanced-linalg'
-const BASE_PATH = `/${COURSE_ID}/`
+// For standalone Vercel deployment, use root path '/'
+// For monorepo deployment under a subdirectory, use `/${COURSE_ID}/`
 // =============================================================================
 
 export default defineConfig({
   plugins: [react()],
-  base: BASE_PATH,
+  base: '/',
   resolve: {
     alias: {
         '@': path.resolve(__dirname, './src'),
