@@ -15,7 +15,7 @@ export function Math({ children, className = '' }: MathProps) {
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (ref.current) {
+    if (ref.current && typeof children === 'string') {
       katex.render(children, ref.current, {
         throwOnError: false,
         displayMode: false,
@@ -34,7 +34,7 @@ export function MathBlock({ children, className = '' }: MathProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (ref.current) {
+    if (ref.current && typeof children === 'string') {
       katex.render(children, ref.current, {
         throwOnError: false,
         displayMode: true,
