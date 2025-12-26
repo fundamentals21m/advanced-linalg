@@ -2,8 +2,8 @@ import { LessonLayout } from '@/components/layout/LessonLayout';
 import { Definition, Theorem, Example } from '@/components/common/ContentBlocks';
 import { Callout } from '@/components/common/Callout';
 import { Math, MathBlock } from '@/components/common/MathBlock';
-// import { SectionQuiz } from '@/components/quiz/SectionQuiz';
-// import { section01Quiz } from '@/data/quizzes'; // Quiz data not implemented yet
+import { SectionQuiz } from '@/components/quiz/SectionQuiz';
+import { section01Quiz } from '@/data/quizzes';
 
 export default function Section01() {
   return (
@@ -235,11 +235,11 @@ export default function Section01() {
         </ul>
       </div>
 
-      {/* <SectionQuiz
+      <SectionQuiz
         sectionId={1}
         questions={section01Quiz}
         title="Fields and Number Systems Quiz"
-      /> */}
+      />
     </LessonLayout>
   );
 }
