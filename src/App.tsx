@@ -19,13 +19,21 @@ const Leaderboard = lazy(() => import('@/pages/Leaderboard'));
 const Theorems = lazy(() => import('@/pages/Theorems'));
 const InteractiveModules = lazy(() => import('@/pages/InteractiveModules'));
 
-// Lazy load section pages as they are created
+// Lazy load all section pages - this is the biggest win for bundle size
 // Each section is only loaded when the user navigates to it
 const sectionLoaders: Record<number, () => Promise<{ default: React.ComponentType }>> = {
-  // Add section loaders as they are created:
-  // 1: () => import('@/pages/sections/Section01'),
-  // 2: () => import('@/pages/sections/Section02'),
-  // etc.
+  1: () => import('@/pages/sections/Section01'),
+  2: () => import('@/pages/sections/Section02'),
+  3: () => import('@/pages/sections/Section03'),
+  4: () => import('@/pages/sections/Section04'),
+  5: () => import('@/pages/sections/Section05'),
+  6: () => import('@/pages/sections/Section06'),
+  7: () => import('@/pages/sections/Section07'),
+  8: () => import('@/pages/sections/Section08'),
+  9: () => import('@/pages/sections/Section09'),
+  10: () => import('@/pages/sections/Section10'),
+  11: () => import('@/pages/sections/Section11'),
+  12: () => import('@/pages/sections/Section12'),
 };
 
 // Create lazy components from loaders

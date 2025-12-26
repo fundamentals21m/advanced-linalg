@@ -1,7 +1,7 @@
 // =============================================================================
 // COURSE CONFIGURATION
 // =============================================================================
-// Advanced Linear Algebra - Based on Hoffman & Kunze (2nd Edition)
+// Advanced Linear Algebra Course - Based on Hoffman & Kunze
 // =============================================================================
 
 import type { CourseId } from '@magic-internet-math/shared';
@@ -19,24 +19,23 @@ export const COURSE_NAME = 'Advanced Linear Algebra';
 /**
  * Short description for meta tags and headers
  */
-export const COURSE_DESCRIPTION = 'A rigorous treatment of linear algebra based on Hoffman & Kunze, covering vector spaces, linear transformations, polynomials, determinants, canonical forms, and inner product spaces.';
+export const COURSE_DESCRIPTION = 'A rigorous treatment of linear algebra based on Hoffman & Kunze, covering vector spaces, linear transformations, and canonical forms.';
 
 /**
  * Course accent color (used in headers, buttons, etc.)
  * Options: 'indigo', 'emerald', 'amber', 'rose', 'cyan'
  */
-export const COURSE_ACCENT = 'cyan';
+export const COURSE_ACCENT = 'emerald';
 
 /**
  * Course icon/emoji for visual identification
  */
-export const COURSE_ICON = '🔷';
+export const COURSE_ICON = '📐';
 
 /**
  * Base path for routing (must match vite.config.ts)
- * Use '/' for standalone Vercel deployment
  */
-export const BASE_PATH = '/';
+export const BASE_PATH = '/advanced-linalg/';
 
 /**
  * Hub URL - main Magic Internet Math landing page

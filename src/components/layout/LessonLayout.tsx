@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { getSectionById, getPartBySectionId, getAdjacentSections, getTotalSections, getSectionIndex } from '@/data/curriculum';
 import { FEATURES, COURSE_ID } from '@/config';
 import { useGamification } from '@/contexts/GamificationContext';
-import type { SectionId } from '@magic-internet-math/shared';
+import type { SectionId } from '@/types/gamification';
 
 interface LessonLayoutProps {
   sectionId: number;

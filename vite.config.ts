@@ -3,11 +3,10 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // =============================================================================
-// COURSE CONFIGURATION - Advanced Linear Algebra (Hoffman & Kunze)
+// COURSE CONFIGURATION - Advanced Linear Algebra
 // =============================================================================
-const COURSE_ID = 'advlinalg'
-// Use '/' for standalone Vercel deployment, '/advanced-linalg/' for subdirectory
-const BASE_PATH = '/'
+const COURSE_ID = 'advanced-linalg'
+const BASE_PATH = `/${COURSE_ID}/`
 // =============================================================================
 
 export default defineConfig({
@@ -21,31 +20,19 @@ export default defineConfig({
         '@pages': path.resolve(__dirname, './src/pages'),
         '@lib': path.resolve(__dirname, './src/lib'),
         '@data': path.resolve(__dirname, './src/data'),
-        // Shared package (local copy for standalone deployment)
+        // Shared package - use local copy for standalone deployment
         '@magic-internet-math/shared': path.resolve(__dirname, './shared'),
-        // KaTeX alias for proper module resolution
-        'katex': path.resolve(__dirname, 'node_modules/katex'),
     },
   },
   build: {
-    chunkSizeWarningLimit: 500, // Lower threshold to catch issues
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        // Manual chunks for better caching and smaller initial load
         manualChunks: {
-          // Core React libraries - changes rarely
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // Math rendering - large but essential
           'vendor-math': ['katex'],
-          // Animation library
           'vendor-animation': ['framer-motion'],
-          // Firebase - only loaded when auth/leaderboard features are used
-          'vendor-firebase': [
-            'firebase/app',
-            'firebase/auth',
-            'firebase/firestore',
-            'firebase/functions',
-          ],
+          'vendor-d3': ['d3'],
         },
       },
     },

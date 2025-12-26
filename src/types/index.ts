@@ -1,9 +1,11 @@
-// Re-export types from shared package for convenience
+/**
+ * Type exports - Re-export from shared module
+ */
 export type {
+  CourseId,
   SectionId,
-  MasteryLevel,
-  Difficulty,
-  AchievementNotification,
-  GamificationState,
   QuizQuestion,
+  QuestionType,
+  Difficulty,
+  SectionQuestions,
 } from '@magic-internet-math/shared';
