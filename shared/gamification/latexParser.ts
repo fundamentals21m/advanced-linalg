@@ -1,15 +1,31 @@
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 
 /**
  * LaTeX Parser and Renderer
  *
  * Uses katex to robustly parse and render LaTeX in quiz content.
  * Handles both inline ($...$) and display ($$...$$) math.
+ * 
+ * Security: All output is sanitized with DOMPurify as defense-in-depth,
+ * in addition to HTML escaping of text segments.
  */
 
 export interface ParsedSegment {
   type: 'text' | 'inline-math' | 'display-math';
   content: string;
+}
+
+/**
+ * Escape HTML special characters to prevent XSS attacks
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 /**
@@ -81,15 +97,19 @@ export function parseLaTeX(text: string): ParsedSegment[] {
 
 /**
  * Render LaTeX segments to HTML string
+ * 
+ * Security: Output is sanitized with DOMPurify to prevent XSS attacks.
+ * KaTeX output is generally safe, but we apply DOMPurify as defense-in-depth.
  */
 export function renderLaTeX(text: string): string {
   if (!text) return '';
 
   const segments = parseLaTeX(text);
 
-  return segments.map(segment => {
+  const rawHtml = segments.map(segment => {
     if (segment.type === 'text') {
-      return segment.content;
+      // Escape HTML in text segments to prevent XSS
+      return escapeHtml(segment.content);
     } else if (segment.type === 'inline-math') {
       try {
         return katex.renderToString(segment.content, {
@@ -97,7 +117,8 @@ export function renderLaTeX(text: string): string {
           displayMode: false,
         });
       } catch {
-        return segment.content;
+        // On KaTeX error, escape and return the raw content
+        return escapeHtml(segment.content);
       }
     } else if (segment.type === 'display-math') {
       try {
@@ -106,9 +127,17 @@ export function renderLaTeX(text: string): string {
           displayMode: true,
         });
       } catch {
-        return segment.content;
+        // On KaTeX error, escape and return the raw content
+        return escapeHtml(segment.content);
       }
     }
     return '';
   }).join('');
+
+  // Final sanitization pass with DOMPurify for defense-in-depth
+  return DOMPurify.sanitize(rawHtml, {
+    // Allow KaTeX's SVG and styling elements
+    ADD_TAGS: ['semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'mroot', 'msqrt', 'mtext', 'annotation'],
+    ADD_ATTR: ['encoding', 'mathvariant', 'stretchy', 'fence', 'separator', 'lspace', 'rspace'],
+  });
 }

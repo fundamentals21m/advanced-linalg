@@ -23,7 +23,7 @@ export const SIGNED_EVENT_SCHEMA = z.object({
   kind: z.number().int(),
   created_at: z.number().int().nonnegative(),
   tags: z.array(z.array(z.string())),
-  content: z.any(),
+  content: z.string(),
 });
 
 // =================================================================
@@ -35,23 +35,34 @@ export const AUTH_STATE_SCHEMA = z.object({
   displayName: DISPLAY_NAME_SCHEMA.nullable(),
 });
 
+// Schema for individual section data (used in syncManager)
+export const SECTION_DATA_SCHEMA = z.object({
+  visitedAt: z.string().nullable().optional(),
+  completedAt: z.string().nullable().optional(),
+  quizAttempts: z.array(z.object({
+    xpEarned: z.number().int().min(0).optional(),
+    score: z.number().min(0).max(100).optional(),
+    timestamp: z.string().optional(),
+    difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+    correctAnswers: z.number().int().min(0).optional(),
+    totalQuestions: z.number().int().min(1).optional(),
+  })).optional(),
+  visualizationsInteracted: z.array(z.string().max(100)).optional(),
+  masteryLevel: z.union([
+    z.number().int().min(0).max(3),
+    z.enum(['none', 'learning', 'familiar', 'mastered']),
+  ]).nullable().optional(),
+  sectionId: z.string().optional(),
+  timeSpentSeconds: z.number().int().min(0).optional(),
+});
+
 export const GAMIIFICATION_STATE_SCHEMA = z.object({
   user: z.object({
     totalXP: z.number().int().min(0),
     level: z.number().int().min(1).max(10),
     sectionsCompleted: z.array(STORAGE_KEY_SCHEMA),
   }),
-  sections: z.record(STORAGE_KEY_SCHEMA, z.object({
-    visitedAt: z.string().nullable(),
-    completedAt: z.string().nullable(),
-    quizAttempts: z.array(z.object({
-      xpEarned: z.number().int().min(0),
-      score: z.number().min(0).max(100),
-      timestamp: z.string(),
-    })),
-    visualizationsInteracted: z.array(z.string().max(100)),
-    masteryLevel: z.number().int().min(0).max(3).nullable(),
-  })),
+  sections: z.record(STORAGE_KEY_SCHEMA, SECTION_DATA_SCHEMA),
   dailyGoals: z.object({
     lastResetDate: z.string().nullable(),
     currentStreak: z.number().int().min(0),
@@ -82,7 +93,7 @@ export const ADMIN_LOG_SCHEMA = z.object({
   action: z.string(),
   targetNpub: NPUB_SCHEMA.nullable(),
   performedBy: z.string(),
-  details: z.record(z.string(), z.any()).nullable(),
+  details: z.record(z.string(), z.unknown()).nullable(),
 });
 
 // =================================================================
@@ -105,18 +116,29 @@ export function sanitizeHtml(input: string): string {
     .substring(0, 1000);
 }
 
-export function sanitizeNumber(input: any, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): number {
+export function sanitizeNumber(input: unknown, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): number {
+  if (typeof input !== 'number' && typeof input !== 'string') {
+    return min;
+  }
   const num = Number(input);
   if (isNaN(num)) return min;
   return Math.min(Math.max(num, min), max);
 }
 
-export function sanitizeUrl(input: string): string {
+/**
+ * Sanitize a URL string, returning null if invalid or using disallowed protocol.
+ * Only allows http: and https: protocols to prevent javascript: and data: attacks.
+ */
+export function sanitizeUrl(input: string): string | null {
   try {
     const url = new URL(input);
+    // Only allow safe protocols
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return null;
+    }
     return url.toString();
   } catch {
-    return input;
+    return null;
   }
 }
 
@@ -161,8 +183,28 @@ export function validateNip05(nip05: string): { valid: boolean; error?: string }
 }
 
 export function validateLocalStorageData(data: unknown): { valid: boolean; error?: string } {
-  const result = GAMIIFICATION_STATE_SCHEMA.safeParse(data);
-  if (result.success) return { valid: true };
+  try {
+    const result = GAMIIFICATION_STATE_SCHEMA.safeParse(data);
+    if (result.success) return { valid: true };
+
+    console.warn('Invalid gamification state in localStorage: Invalid local storage data format', result.error);
+    return { valid: false, error: 'Invalid local storage data format' };
+  } catch (error) {
+    console.error('Error validating localStorage data:', error);
+    return { valid: false, error: 'Validation error' };
+  }
+}
+
+export function validateSectionData(data: unknown): { valid: boolean; data?: z.infer<typeof SECTION_DATA_SCHEMA>; error?: string } {
+  const result = SECTION_DATA_SCHEMA.safeParse(data);
+  if (result.success) return { valid: true, data: result.data };
   
-  return { valid: false, error: 'Invalid local storage data format' };
+  return { valid: false, error: 'Invalid section data format' };
+}
+
+export function validateAuthState(data: unknown): { valid: boolean; data?: z.infer<typeof AUTH_STATE_SCHEMA>; error?: string } {
+  const result = AUTH_STATE_SCHEMA.safeParse(data);
+  if (result.success) return { valid: true, data: result.data };
+  
+  return { valid: false, error: 'Invalid auth state format' };
 }

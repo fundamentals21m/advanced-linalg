@@ -5,20 +5,17 @@
 
 import { httpsCallable } from 'firebase/functions';
 import { getFirebaseFunctions, isFirebaseConfigured } from '../firebase/config';
+import { isValidCourseId } from '../types/courses';
+import { SYNC_INTERVAL_MS, DEBOUNCE_MS, RATE_LIMIT_MS } from '../constants';
 import type { CourseId, ScoreUpdate, SyncPayload } from './types';
-import { useErrorContext } from '../contexts/ErrorContext';
 import { getLogger } from '../utils/logger';
+// import { validateSectionData } from '../validation/schemas'; // Temporarily disabled to test circular dependency
+import { XP_CONFIG } from '../gamification/types';
 
 const logger = getLogger('SyncManager');
 
 // Storage key for gamification state
 const STORAGE_KEY = 'magic-internet-math-progress';
-
-// Sync interval (5 minutes)
-const SYNC_INTERVAL_MS = 5 * 60 * 1000;
-
-// Debounce delay for immediate syncs
-const DEBOUNCE_MS = 2000;
 
 /**
  * Extract scores from localStorage gamification state
@@ -36,16 +33,16 @@ function extractScoresFromStorage(): ScoreUpdate[] | null {
     // Calculate XP per course from sections
     for (const [sectionId, sectionData] of Object.entries(state.sections)) {
       const [coursePrefix] = sectionId.split(':');
-      const course = coursePrefix as CourseId;
 
-      if (!['ba', 'crypto', 'aa', 'linalg', 'advlinalg'].includes(course)) continue;
+      if (!isValidCourseId(coursePrefix)) continue;
+      const course = coursePrefix;
 
-      const section = sectionData as {
-        visitedAt?: string;
-        completedAt?: string;
-        quizAttempts?: Array<{ xpEarned?: number }>;
-        visualizationsInteracted?: string[];
-      };
+      // Simple validation instead of schema validation to avoid circular dependencies
+      const section = sectionData as any; // Type assertion for now
+      if (!section) {
+        logger.warn(`Invalid section data for ${sectionId}, skipping`);
+        continue;
+      }
 
       // Add XP from quiz attempts
       if (section.quizAttempts) {
@@ -56,19 +53,19 @@ function extractScoresFromStorage(): ScoreUpdate[] | null {
         }
       }
 
-      // Add XP for section visits (10 XP each)
+      // Add XP for section visits
       if (section.visitedAt) {
-        scores[course] += 10;
+        scores[course] += XP_CONFIG.SECTION_VISIT;
       }
 
-      // Add XP for section completion (25 XP each)
+      // Add XP for section completion
       if (section.completedAt) {
-        scores[course] += 25;
+        scores[course] += XP_CONFIG.SECTION_COMPLETE;
       }
 
-      // Add XP for visualizations (5 XP each)
+      // Add XP for visualizations
       if (section.visualizationsInteracted) {
-        scores[course] += section.visualizationsInteracted.length * 5;
+        scores[course] += section.visualizationsInteracted.length * XP_CONFIG.VISUALIZATION_USE;
       }
     }
 
@@ -103,6 +100,13 @@ export class SyncManager {
     if (authenticated) {
       this.syncNow();
     }
+  }
+
+  /**
+   * Set display name for sync payload
+   */
+  setDisplayName(name: string | null): void {
+    this.displayName = name;
   }
 
   /**
@@ -173,9 +177,9 @@ export class SyncManager {
       return { success: false, error: 'Firebase not configured' };
     }
 
-    // Rate limit: don't sync more than once every 30 seconds
+    // Rate limit: don't sync more often than RATE_LIMIT_MS
     const now = Date.now();
-    if (now - this.lastSyncTime < 30000) {
+    if (now - this.lastSyncTime < RATE_LIMIT_MS) {
       return { success: false, error: 'Rate limited' };
     }
 
@@ -207,6 +211,33 @@ export class SyncManager {
          error: error instanceof Error ? error.message : 'Unknown error',
        };
      }
+  }
+
+  /**
+   * Sync with exponential backoff retry
+   */
+  async syncWithRetry(maxRetries: number = 3): Promise<{ success: boolean; totalXP?: number; error?: string }> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const result = await this.syncNow();
+      if (result.success) return result;
+
+      // Don't retry on certain errors
+      if (result.error === 'Not authenticated' || 
+          result.error === 'No scores to sync' ||
+          result.error === 'Firebase not configured') {
+        return result;
+      }
+
+      // Wait before retry (exponential backoff: 1s, 2s, 4s)
+      if (attempt < maxRetries - 1) {
+        const delay = 1000 * Math.pow(2, attempt);
+        logger.debug(`Sync retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+        // Reset rate limit for retry
+        this.lastSyncTime = 0;
+      }
+    }
+    return { success: false, error: 'Sync failed after multiple retries' };
   }
 
   /**

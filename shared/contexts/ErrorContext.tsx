@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, ReactNode, useState } from 'react';
+import { createContext, useContext, useCallback, useState, type ReactNode } from 'react';
 import { getLogger } from '../utils/logger';
 
 const logger = getLogger('ErrorContext');

@@ -9,38 +9,56 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Minimal setup for localStorage tests
-Object.defineProperty(global, 'localStorage', {
-  value: {
-    getItem: (key: string) => null,
-    setItem: (key: string, value: string) => {},
-    removeItem: (key: string) => {},
-    clear: () => {},
-    get length: () => 0,
-    key: (index: number) => null,
-  },
-  writable: true,
-});
+// Only set up localStorage mock if not already provided by the environment
+if (typeof globalThis.localStorage === 'undefined') {
+  const localStorageMock = {
+    store: {} as Record<string, string>,
+    getItem(key: string) {
+      return this.store[key] ?? null;
+    },
+    setItem(key: string, value: string) {
+      this.store[key] = value;
+    },
+    removeItem(key: string) {
+      delete this.store[key];
+    },
+    clear() {
+      this.store = {};
+    },
+    get length() {
+      return Object.keys(this.store).length;
+    },
+    key(index: number) {
+      return Object.keys(this.store)[index] ?? null;
+    },
+  };
 
-// Minimal setup for document for React tests
-Object.defineProperty(global, 'document', {
-  value: {
-    defaultView: {
-      getComputedStyle: vi.fn(() => ({
-        getPropertyValue: vi.fn(),
-        cssText: '',
-        display: 'block',
-        width: '0px',
-        height: '0px',
-        getPropertyValue: vi.fn(() => ''),
-      })),
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: localStorageMock,
+    writable: true,
+  });
+}
+
+// Only set up document mock if not already provided by the environment (node environment)
+if (typeof globalThis.document === 'undefined') {
+  Object.defineProperty(globalThis, 'document', {
+    value: {
+      defaultView: {
+        getComputedStyle: vi.fn(() => ({
+          getPropertyValue: vi.fn(() => ''),
+          cssText: '',
+          display: 'block',
+          width: '0px',
+          height: '0px',
+        })),
+      },
+      body: {
+        style: {},
+      },
+      createElement: vi.fn(),
+      querySelector: vi.fn(() => null),
+      querySelectorAll: vi.fn(() => []),
     },
-    body: {
-      style: {},
-    },
-    createElement: vi.fn(),
-    querySelector: vi.fn(() => null),
-    querySelectorAll: vi.fn(() => []),
-  },
-  writable: true,
-});
+    writable: true,
+  });
+}

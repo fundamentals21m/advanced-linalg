@@ -7,6 +7,10 @@ import { httpsCallable } from 'firebase/functions';
 import { getFirebaseFunctions, isFirebaseConfigured } from '../../firebase/config';
 import { useNostrAuth } from '../../contexts/NostrAuthContext';
 import { shortenNpub } from '../../nostr/utils';
+import { getLogger } from '../../utils/logger';
+// import { validateNpub } from '../../validation/schemas'; // Temporarily disabled to test circular dependency
+
+const logger = getLogger('AdminPanel');
 
 interface AdminLog {
   id: string;
@@ -43,7 +47,7 @@ export function AdminPanel({ className = '' }: AdminPanelProps) {
       const result = await getAdminLogs({ limit: 20 });
       setLogs(result.data.logs);
     } catch (error) {
-      console.error('Failed to load admin logs:', error);
+      logger.error('Failed to load admin logs:', error);
     }
   }, [isAdmin]);
 
@@ -55,8 +59,15 @@ export function AdminPanel({ className = '' }: AdminPanelProps) {
 
   // Ban user
   const handleBan = async () => {
-    if (!targetNpub.trim()) {
-      setMessage({ type: 'error', text: 'Please enter a valid npub' });
+    const trimmedNpub = targetNpub.trim();
+    if (!trimmedNpub) {
+      setMessage({ type: 'error', text: 'Please enter an npub' });
+      return;
+    }
+
+    // Simple npub validation
+    if (!trimmedNpub.startsWith('npub1') || trimmedNpub.length < 10) {
+      setMessage({ type: 'error', text: 'Invalid npub format' });
       return;
     }
 
@@ -87,8 +98,15 @@ export function AdminPanel({ className = '' }: AdminPanelProps) {
 
   // Unban user
   const handleUnban = async () => {
-    if (!targetNpub.trim()) {
-      setMessage({ type: 'error', text: 'Please enter a valid npub' });
+    const trimmedNpub = targetNpub.trim();
+    if (!trimmedNpub) {
+      setMessage({ type: 'error', text: 'Please enter an npub' });
+      return;
+    }
+
+    // Simple npub validation
+    if (!trimmedNpub.startsWith('npub1') || trimmedNpub.length < 10) {
+      setMessage({ type: 'error', text: 'Invalid npub format' });
       return;
     }
 
@@ -118,8 +136,15 @@ export function AdminPanel({ className = '' }: AdminPanelProps) {
 
   // Reset user scores
   const handleResetScores = async () => {
-    if (!targetNpub.trim()) {
-      setMessage({ type: 'error', text: 'Please enter a valid npub' });
+    const trimmedNpub = targetNpub.trim();
+    if (!trimmedNpub) {
+      setMessage({ type: 'error', text: 'Please enter an npub' });
+      return;
+    }
+
+    // Simple npub validation
+    if (!trimmedNpub.startsWith('npub1') || trimmedNpub.length < 10) {
+      setMessage({ type: 'error', text: 'Invalid npub format' });
       return;
     }
 

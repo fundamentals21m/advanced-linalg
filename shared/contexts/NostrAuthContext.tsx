@@ -20,92 +20,15 @@ import {
   npubToHex,
   hasNostrExtension,
   waitForNostrExtension,
+  fetchProfileFromRelay,
 } from '../nostr/utils';
+import { AUTH_EVENT_KIND, type NostrEvent, type UnsignedNostrEvent } from '../nostr/types';
+import { DEFAULT_RELAYS, EXTENSION_WAIT_MS } from '../constants';
 import { getSyncManager } from '../leaderboard/syncManager';
 import { getLogger } from '../utils/logger';
-import {
-  validateLocalStorageData,
-  validatePubkeyHex,
-  validateDisplayName,
-  validateNpub,
-  validateNip05,
-} from '../validation/schemas';
+// import { validateAuthState } from '../validation/schemas'; // Temporarily disabled to test circular dependency
 
 const logger = getLogger('NostrAuth');
-
-// Default relays to query for profile
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://relay.nostr.band',
-  'wss://nos.lol',
-  'wss://relay.primal.net',
-];
-
-// Nostr profile metadata (kind 0)
-interface NostrProfile {
-  name?: string;
-  display_name?: string;
-  nip05?: string;
-  picture?: string;
-  about?: string;
-}
-
-// Fetch profile from a single relay
-async function fetchProfileFromRelay(
-  relayUrl: string,
-  pubkeyHex: string
-): Promise<NostrProfile | null> {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      ws.close();
-      resolve(null);
-    }, 5000);
-
-    const ws = new WebSocket(relayUrl);
-    const subId = Math.random().toString(36).substring(2, 15);
-
-    ws.onopen = () => {
-      // Request kind 0 (metadata) events for this pubkey
-      const req = JSON.stringify([
-        'REQ',
-        subId,
-        { kinds: [0], authors: [pubkeyHex], limit: 1 },
-      ]);
-      ws.send(req);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data[0] === 'EVENT' && data[1] === subId) {
-          const content = JSON.parse(data[2].content);
-          clearTimeout(timeout);
-          ws.close();
-          resolve({
-            name: content.name || content.display_name,
-            display_name: content.display_name,
-            nip05: content.nip05,
-            picture: content.picture,
-            about: content.about,
-          });
-        } else if (data[0] === 'EOSE') {
-          // End of stored events - no profile found
-          clearTimeout(timeout);
-          ws.close();
-          resolve(null);
-        }
-      } catch {
-        // Ignore parse errors
-      }
-    };
-
-    ws.onerror = () => {
-      clearTimeout(timeout);
-      ws.close();
-      resolve(null);
-    };
-  });
-}
 
 interface NostrAuthContextValue {
   // Auth state
@@ -152,7 +75,7 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
   // Check for Nostr extension on mount
   useEffect(() => {
     const checkExtension = async () => {
-      const found = await waitForNostrExtension(2000);
+      const found = await waitForNostrExtension(EXTENSION_WAIT_MS);
       setHasExtension(found);
       setExtensionChecked(true);
     };
@@ -212,19 +135,19 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
         try {
           const stored = localStorage.getItem(AUTH_STORAGE_KEY);
           if (stored) {
-            const state: StoredAuthState = JSON.parse(stored);
-            const validation = validateLocalStorageData(state);
-            if (!validation.valid) {
-              logger.warn('Invalid auth state in localStorage:', validation.error);
+            const parsed = JSON.parse(stored);
+            // Simple validation instead of schema validation to avoid circular dependencies
+            if (!parsed || !parsed.npub) {
+              logger.warn('Invalid auth state in localStorage');
               localStorage.removeItem(AUTH_STORAGE_KEY);
               return;
             }
-            if (state.npub === user.uid) {
-              setDisplayNameState(state.displayName);
+            if (parsed.npub === user.uid) {
+              setDisplayNameState(validation.data.displayName);
             }
           }
-        } catch {
-          // Ignore storage errors
+        } catch (err) {
+          logger.debug('Storage read error:', err);
         }
 
         // Start sync manager
@@ -236,8 +159,8 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
         try {
           const pubkeyHex = npubToHex(user.uid);
           fetchNostrProfile(pubkeyHex);
-        } catch {
-          // Ignore conversion errors
+        } catch (err) {
+          logger.debug('Npub conversion error:', err);
         }
       } else {
         // User is signed out
@@ -258,9 +181,9 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
 
   // Connect with Nostr
   const connect = useCallback(async () => {
-    console.log('[NostrAuth] connect() called');
-       logger.info('isFirebaseConfigured:', isFirebaseConfigured());
-    logger.info('hasNostrExtension:', hasNostrExtension());
+    logger.debug('connect() called');
+    logger.debug('isFirebaseConfigured:', isFirebaseConfigured());
+    logger.debug('hasNostrExtension:', hasNostrExtension());
 
     if (!isFirebaseConfigured()) {
       logger.info('Firebase not configured, cannot connect');
@@ -326,13 +249,15 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
            AUTH_STORAGE_KEY,
            JSON.stringify(authState)
          );
-       } catch {
-        // Ignore storage errors
+       } catch (err) {
+        logger.warn('Failed to store auth state:', err);
       }
 
       // Trigger initial sync
       const syncManager = getSyncManager();
-      syncManager.syncNow();
+      syncManager.syncNow().catch(err => {
+        logger.warn('Initial sync failed:', err);
+      });
      } catch (err) {
       logger.error('Nostr connect error:', err);
       setError(
@@ -356,8 +281,8 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
       // Clear stored auth state
       try {
         localStorage.removeItem(AUTH_STORAGE_KEY);
-      } catch {
-        // Ignore storage errors
+      } catch (err) {
+        logger.warn('Failed to clear auth state from storage:', err);
       }
 
       setNpub(null);
@@ -383,8 +308,8 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
             AUTH_STORAGE_KEY,
             JSON.stringify({ npub, displayName: name })
           );
-        } catch {
-          // Ignore storage errors
+        } catch (err) {
+          logger.warn('Failed to update display name in storage:', err);
         }
       }
 

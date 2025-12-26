@@ -15,9 +15,10 @@ export { ErrorProvider, useErrorContext } from './contexts/ErrorContext';
 // Components
 export { ErrorBoundary } from './components/ErrorBoundary';
 export { ErrorDisplay } from './components/ErrorDisplay';
+export { LoadingSpinner } from './components/common/LoadingSpinner';
 
 // Gamification
 export * from './gamification';
 
-// Validation (NEW)
-export * from './validation/schemas';
+// Validation schemas are imported directly by components that need them
+// to avoid potential circular dependencies
